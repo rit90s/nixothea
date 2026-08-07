@@ -33,6 +33,11 @@
             inherit pkgs;
             mkTarget = self.lib.mkTarget;
           };
+          aur = import ./targets/aur.nix {
+            inherit pkgs;
+            mkTarget = self.lib.mkTarget;
+            collectDeps = self.lib.collectDeps;
+          };
         }
       );
     };
