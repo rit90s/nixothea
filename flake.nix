@@ -29,6 +29,10 @@
             inherit pkgs;
             mkTarget = self.lib.mkTarget;
           };
+          nix = import ./targets/nix.nix {
+            inherit pkgs;
+            mkTarget = self.lib.mkTarget;
+          };
         }
       );
     };
