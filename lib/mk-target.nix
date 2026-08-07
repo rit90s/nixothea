@@ -1,5 +1,5 @@
-# A target implements the two phases nixothea drives. A target has no name
-# of its own -- the caller assigns it one by the attrset key it's placed
+# A target implements the phases nixothea drives. A target has no name of
+# its own -- the caller assigns it one by the attrset key it's placed
 # under when building the `targets` attrset passed to `mkResolver`/
 # `buildTarget`, so the same target implementation can be instantiated
 # multiple times under different names (e.g. a `deb` target configured once
@@ -18,15 +18,41 @@
 #     carries at least the logical name, real name, and concrete resolved
 #     version.
 #
-#   mkDerivation : { pkgs, lockSection }: (attrs -> derivation)
-#     `lockSection` is this target's already-resolved section of the lock
-#     file (whatever `resolve` printed for it). Returns a drop-in
-#     replacement for `pkgs.mkDerivation`: calling it from inside a package
-#     definition, evaluated against this target, is what produces the final
-#     packaged derivation (e.g. the .deb-building derivation).
-{ lib, resolve, mkDerivation }:
+#   nativeDerivationFactory : { pkgs, name, entry }: <value>
+#     Called once per dependency found in this target's lock-file section
+#     (`name` = the logical dependency name, `entry` = whatever `resolve`
+#     put in the lock file for it). Turns one resolved dependency into
+#     whatever this target considers its "native" representation of it --
+#     the value exposed as `pkgs.<name>` to package definitions built
+#     against this target. What that actually is is entirely target
+#     -specific: a real derivation if the target fetches/builds the
+#     dependency for real, purely descriptive metadata if it doesn't (e.g.
+#     an AUR target, where dependencies are just names for a PKGBUILD's
+#     depends= array, resolved externally by pacman later). Must return an
+#     attrset (the framework tags it before exposing it).
+#
+#   mkDerivation : { pkgs, role, name, realDrv, nodeDeps, dependencyDeps }: <result>
+#     The target-specific half of `pkgs.mkDerivation` -- the framework
+#     handles the mechanical part (validating buildInputs, building the
+#     real derivation, deduplicating nested nodes; see
+#     wrap-mk-derivation.nix) and calls this with the result. `role` is
+#     "root" (this is the final thing definition returned) or "dependency"
+#     (this was reached via another node's buildInputs/
+#     propagatedBuildInputs, with `name` set to its own pname). `realDrv`
+#     is the actual, really-built derivation; `nodeDeps`/`dependencyDeps`
+#     are this node's own direct nested nixothea nodes/dependencies
+#     (already deduplicated), for the target's merge logic to fold in.
+#     Every node also exposes its own `.nodeDeps`/`.dependencyDeps`
+#     directly (single-level only, same as here) -- so a nested node's own
+#     nested deps can be inspected structurally, without having to call it
+#     with `role = "dependency"` first. For the *whole*
+#     transitively-reachable tree (every dependency nested at any depth,
+#     deduplicated), see `collectDeps` in collect-deps.nix.
+{ lib, resolve, nativeDerivationFactory, mkDerivation }:
 assert lib.assertMsg (builtins.isFunction resolve)
   "nixothea: target.resolve must be a function of { pkgs, deps }";
+assert lib.assertMsg (builtins.isFunction nativeDerivationFactory)
+  "nixothea: target.nativeDerivationFactory must be a function of { pkgs, name, entry }";
 assert lib.assertMsg (builtins.isFunction mkDerivation)
-  "nixothea: target.mkDerivation must be a function of { pkgs, lockSection }";
-{ inherit resolve mkDerivation; }
+  "nixothea: target.mkDerivation must be a function of { pkgs, role, name, realDrv, nodeDeps, dependencyDeps }";
+{ inherit resolve nativeDerivationFactory mkDerivation; }

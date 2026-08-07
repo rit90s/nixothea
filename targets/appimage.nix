@@ -1,8 +1,8 @@
 # A constructor: `nixothea.targets.appimage { icon = ...; }` returns a
 # target. AppImages are fully self-contained (no host package manager
 # involved), so this target doesn't participate in dependency resolution --
-# `resolve` always emits an empty section, and `mkDerivation` bundles
-# whatever runtime closure the built package actually needs directly.
+# `resolve` always emits an empty section, and the root build bundles
+# whatever runtime closure it actually needs directly.
 { pkgs, mkTarget }:
 let
   lib = pkgs.lib;
@@ -33,10 +33,10 @@ in
   # "xz"/"zstd" produce smaller AppImages at the cost of build time.
   compression ? "gzip",
 
-  # Which binary under the wrapped derivation's $out/bin/ the generated
-  # AppRun execs. When null, resolved from $out/bin/: used directly if
-  # there's exactly one entry, otherwise the build fails asking for
-  # mainProgram to be set explicitly.
+  # Which binary under the root derivation's $out/bin/ the generated AppRun
+  # execs. When null, resolved from $out/bin/: used directly if there's
+  # exactly one entry, otherwise the build fails asking for mainProgram to
+  # be set explicitly.
   mainProgram ? null,
 
   # Not yet implemented: embedding zsync update info requires patching an
@@ -53,80 +53,96 @@ mkTarget {
       text = "echo '{}'";
     };
 
-  mkDerivation = { pkgs, lockSection }: args:
-    let
-      drv = pkgs.stdenv.mkDerivation args;
-      closureInfo = pkgs.closureInfo { rootPaths = [ drv ]; };
+  # Never actually called: resolve above always emits an empty section, so
+  # there are never any dependencies to turn into pkgs.<name> values. Exists
+  # to satisfy the target interface.
+  nativeDerivationFactory = { pkgs, name, entry }:
+    throw "nixothea appimage target: does not support dependencies (got ${name})";
 
-      resolvedMainProgram =
-        if mainProgram != null then
-          mainProgram
-        else if !(builtins.pathExists "${drv}/bin") then
-          throw "nixothea appimage target: ${args.pname} has no bin/ directory -- set mainProgram explicitly"
-        else
-          let bins = builtins.attrNames (builtins.readDir "${drv}/bin");
-          in
-          if builtins.length bins == 1 then
-            builtins.head bins
+  mkDerivation = { pkgs, role, name ? null, realDrv, nodeDeps, dependencyDeps }:
+    if role == "dependency" then
+      # A node used as a buildInput of something else is already a real
+      # dependency of that something's real build (see
+      # wrap-mk-derivation.nix -- realDrv is unwrapped into the real
+      # compile for real linking), which means it's already part of that
+      # build's Nix closure. Since the root build below bundles its *full*
+      # closure regardless, there's nothing extra to do here.
+      realDrv
+    else if role == "root" then
+      let
+        closureInfo = pkgs.closureInfo { rootPaths = [ realDrv ]; };
+
+        resolvedMainProgram =
+          if mainProgram != null then
+            mainProgram
+          else if !(builtins.pathExists "${realDrv}/bin") then
+            throw "nixothea appimage target: ${realDrv.pname} has no bin/ directory -- set mainProgram explicitly"
           else
-            throw "nixothea appimage target: ${args.pname} ships ${toString (builtins.length bins)} binaries under bin/ -- set mainProgram explicitly";
+            let bins = builtins.attrNames (builtins.readDir "${realDrv}/bin");
+            in
+            if builtins.length bins == 1 then
+              builtins.head bins
+            else
+              throw "nixothea appimage target: ${realDrv.pname} ships ${toString (builtins.length bins)} binaries under bin/ -- set mainProgram explicitly";
 
-      appRun = pkgs.writeText "AppRun" ''
-        #!/bin/sh
-        exec "$APPDIR${drv}/bin/${resolvedMainProgram}" "$@"
-      '';
+        appRun = pkgs.writeText "AppRun" ''
+          #!/bin/sh
+          exec "$APPDIR${realDrv}/bin/${resolvedMainProgram}" "$@"
+        '';
 
-      iconExt = lib.last (lib.splitString "." (baseNameOf (toString icon)));
+        iconExt = lib.last (lib.splitString "." (baseNameOf (toString icon)));
 
-      desktopFile = pkgs.writeText "${args.pname}.desktop" ''
-        [Desktop Entry]
-        Type=Application
-        Name=${args.pname}
-        Exec=AppRun
-        ${lib.optionalString (icon != null) "Icon=${args.pname}"}
-        Categories=${lib.concatStringsSep ";" categories};
-      '';
-    in
-    assert lib.assertMsg (updateInformation == null)
-      "nixothea appimage target: updateInformation is not yet implemented";
-    pkgs.stdenv.mkDerivation {
-      pname = "${args.pname}-appimage";
-      version = args.version;
-      dontUnpack = true;
-      # The finished .AppImage starts with the runtime's own ELF header,
-      # with the squashfs payload appended as trailing bytes the runtime
-      # locates by scanning past its own known size. Nix's default fixup
-      # phase would see that ELF header and run shrinkRPath/patchelf/strip
-      # on the file, which rewrite ELF sections in place and could corrupt
-      # or displace that trailing data -- none of which benefits an
-      # artifact that has to run unmodified on non-Nix systems anyway.
-      dontFixup = true;
-      nativeBuildInputs = [ pkgs.squashfsTools ];
-      buildPhase = ''
-        runHook preBuild
+        desktopFile = pkgs.writeText "${realDrv.pname}.desktop" ''
+          [Desktop Entry]
+          Type=Application
+          Name=${realDrv.pname}
+          Exec=AppRun
+          ${lib.optionalString (icon != null) "Icon=${realDrv.pname}"}
+          Categories=${lib.concatStringsSep ";" categories};
+        '';
+      in
+      assert lib.assertMsg (updateInformation == null)
+        "nixothea appimage target: updateInformation is not yet implemented";
+      pkgs.stdenv.mkDerivation {
+        pname = "${realDrv.pname}-appimage";
+        version = realDrv.version;
+        dontUnpack = true;
+        # The finished .AppImage starts with the runtime's own ELF header,
+        # with the squashfs payload appended as trailing bytes the runtime
+        # locates by scanning past its own known size. Nix's default fixup
+        # phase would see that ELF header and run shrinkRPath/patchelf/
+        # strip on it, which rewrite ELF sections in place and could
+        # corrupt or displace that trailing data -- none of which benefits
+        # an artifact that has to run unmodified on non-Nix systems anyway.
+        dontFixup = true;
+        nativeBuildInputs = [ pkgs.squashfsTools ];
+        buildPhase = ''
+          runHook preBuild
 
-        appdir=AppDir
-        mkdir -p "$appdir/nix/store"
-        while IFS= read -r path; do
-          cp -a --parents "$path" "$appdir"
-        done < ${closureInfo}/store-paths
+          appdir=AppDir
+          mkdir -p "$appdir/nix/store"
+          while IFS= read -r path; do
+            cp -a --parents "$path" "$appdir"
+          done < ${closureInfo}/store-paths
 
-        install -Dm755 ${appRun} "$appdir/AppRun"
-        install -Dm644 ${desktopFile} "$appdir/${args.pname}.desktop"
-        ${lib.optionalString (icon != null)
-          ''install -Dm644 ${icon} "$appdir/${args.pname}.${iconExt}"''}
+          install -Dm755 ${appRun} "$appdir/AppRun"
+          install -Dm644 ${desktopFile} "$appdir/${realDrv.pname}.desktop"
+          ${lib.optionalString (icon != null)
+            ''install -Dm644 ${icon} "$appdir/${realDrv.pname}.${iconExt}"''}
 
-        mksquashfs "$appdir" payload.squashfs -root-owned -noappend -comp ${compression}
-        cat ${runtime} payload.squashfs > "${args.pname}-${args.version}-x86_64.AppImage"
-        chmod +x "${args.pname}-${args.version}-x86_64.AppImage"
+          mksquashfs "$appdir" payload.squashfs -root-owned -noappend -comp ${compression}
+          cat ${runtime} payload.squashfs > "${realDrv.pname}-${realDrv.version}-x86_64.AppImage"
+          chmod +x "${realDrv.pname}-${realDrv.version}-x86_64.AppImage"
 
-        runHook postBuild
-      '';
-      installPhase = ''
-        runHook preInstall
-        mkdir -p $out
-        cp ./*.AppImage $out/
-        runHook postInstall
-      '';
-    };
+          runHook postBuild
+        '';
+        installPhase = ''
+          runHook preInstall
+          mkdir -p $out
+          cp ./*.AppImage $out/
+          runHook postInstall
+        '';
+      }
+    else
+      throw "nixothea appimage target: unknown role ${role}";
 }
