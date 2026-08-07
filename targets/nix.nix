@@ -30,5 +30,5 @@ mkTarget {
   # Transparent: regardless of role, the real derivation *is* the result --
   # no wrapping, no merging, exactly what pkgs.mkDerivation would have
   # produced natively.
-  mkDerivation = { pkgs, role, name ? null, realDrv, nodeDeps, dependencyDeps }: realDrv;
+  mkDerivation = { pkgs, role, name ? null, realDrv, nodeDeps, dependencyDeps, args }: realDrv;
 }

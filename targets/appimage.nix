@@ -59,7 +59,7 @@ mkTarget {
   nativeDerivationFactory = { pkgs, name, entry }:
     throw "nixothea appimage target: does not support dependencies (got ${name})";
 
-  mkDerivation = { pkgs, role, name ? null, realDrv, nodeDeps, dependencyDeps }:
+  mkDerivation = { pkgs, role, name ? null, realDrv, nodeDeps, dependencyDeps, args }:
     if role == "dependency" then
       # A node used as a buildInput of something else is already a real
       # dependency of that something's real build (see

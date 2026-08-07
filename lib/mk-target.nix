@@ -31,7 +31,7 @@
 #     depends= array, resolved externally by pacman later). Must return an
 #     attrset (the framework tags it before exposing it).
 #
-#   mkDerivation : { pkgs, role, name, realDrv, nodeDeps, dependencyDeps }: <result>
+#   mkDerivation : { pkgs, role, name, realDrv, nodeDeps, dependencyDeps, args }: <result>
 #     The target-specific half of `pkgs.mkDerivation` -- the framework
 #     handles the mechanical part (validating buildInputs, building the
 #     real derivation, deduplicating nested nodes; see
@@ -39,20 +39,26 @@
 #     "root" (this is the final thing definition returned) or "dependency"
 #     (this was reached via another node's buildInputs/
 #     propagatedBuildInputs, with `name` set to its own pname). `realDrv`
-#     is the actual, really-built derivation; `nodeDeps`/`dependencyDeps`
-#     are this node's own direct nested nixothea nodes/dependencies
-#     (already deduplicated), for the target's merge logic to fold in.
-#     Every node also exposes its own `.nodeDeps`/`.dependencyDeps`
-#     directly (single-level only, same as here) -- so a nested node's own
-#     nested deps can be inspected structurally, without having to call it
-#     with `role = "dependency"` first. For the *whole*
-#     transitively-reachable tree (every dependency nested at any depth,
-#     deduplicated), see `collectDeps` in collect-deps.nix.
+#     is the real derivation Nix constructed from `args` -- cheap to read
+#     metadata off (`.pname`, `.version`, ...) regardless of whether
+#     anything ever forces it to actually build, which some targets (e.g.
+#     AUR, where there's no real Nix build to speak of) never do.
+#     `nodeDeps`/`dependencyDeps` are this node's own direct nested
+#     nixothea nodes/dependencies (already deduplicated), for the target's
+#     merge logic to fold in; `args` is the raw attrset passed to
+#     pkgs.mkDerivation, for targets that need more than realDrv's
+#     metadata (e.g. the literal buildPhase/installPhase text). Every node
+#     also exposes its own `.nodeDeps`/`.dependencyDeps`/`.args` directly
+#     (single-level only, same as here) -- so a nested node's own nested
+#     deps can be inspected structurally, without having to call it with
+#     `role = "dependency"` first. For the *whole* transitively-reachable
+#     tree (every dependency nested at any depth, deduplicated), see
+#     `collectDeps` in collect-deps.nix.
 { lib, resolve, nativeDerivationFactory, mkDerivation }:
 assert lib.assertMsg (builtins.isFunction resolve)
   "nixothea: target.resolve must be a function of { pkgs, deps }";
 assert lib.assertMsg (builtins.isFunction nativeDerivationFactory)
   "nixothea: target.nativeDerivationFactory must be a function of { pkgs, name, entry }";
 assert lib.assertMsg (builtins.isFunction mkDerivation)
-  "nixothea: target.mkDerivation must be a function of { pkgs, role, name, realDrv, nodeDeps, dependencyDeps }";
+  "nixothea: target.mkDerivation must be a function of { pkgs, role, name, realDrv, nodeDeps, dependencyDeps, args }";
 { inherit resolve nativeDerivationFactory mkDerivation; }
