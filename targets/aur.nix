@@ -127,6 +127,31 @@ mkTarget {
 
           build() {
             cd "$srcdir"
+            # Almost every real-world release tarball extracts into a
+            # single wrapping directory (the near-universal "pkgname-
+            # pkgver/" convention -- GitHub's own auto-generated tarballs
+            # included), which makepkg's own extraction does nothing to
+            # flatten. A hardcoded "cd $srcdir" alone leaves build()
+            # sitting one level above the actual sources for the common
+            # case -- verified empirically (a real aurSource tarball built
+            # this way failed with "no targets specified and no makefile
+            # found" against a real makepkg). Auto-detected rather than
+            # assuming a specific name (aurSource's URL, and therefore
+            # the archive's actual top-level directory name, isn't
+            # necessarily derivable from pname/version) -- filtered to
+            # *directory* entries specifically (glob's trailing "/"
+            # qualifier), not just "exactly one entry", because makepkg
+            # itself leaves the downloaded archive file sitting in
+            # $srcdir right alongside whatever it extracted from it --
+            # also verified empirically, the first version of this fix
+            # didn't account for that and still failed the same way.
+            # Only descends when there's exactly one directory -- a flat
+            # tarball (no directories at all) or multiple top-level
+            # directories (ambiguous) is left untouched.
+            dirs=(*/)
+            if [ "''${#dirs[@]}" -eq 1 ] && [ -d "''${dirs[0]}" ]; then
+              cd "''${dirs[0]}"
+            fi
           ${lib.concatStringsSep "\n" (steps "buildPhase")}
           }
 
@@ -134,6 +159,14 @@ mkTarget {
             out="$pkgdir/usr"
             mkdir -p "$out"
             cd "$srcdir"
+            # Same directory auto-detection as build() above -- must be
+            # repeated here since package() gets its own fresh "cd
+            # $srcdir" and needs to land in the same place build() ended
+            # up, not $srcdir itself.
+            dirs=(*/)
+            if [ "''${#dirs[@]}" -eq 1 ] && [ -d "''${dirs[0]}" ]; then
+              cd "''${dirs[0]}"
+            fi
           ${lib.concatStringsSep "\n" (steps "installPhase")}
           }
         '';
