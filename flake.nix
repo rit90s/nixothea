@@ -58,6 +58,26 @@
             mkTarget = self.lib.mkTarget;
             collectDeps = self.lib.collectDeps;
           };
+          # windowsExe/windowsMsi are constructed with the same native
+          # `pkgs` as every other target above (their own construction-time
+          # `pkgs` is only ever used for the platform-agnostic `.lib`), but
+          # actually *using* them needs a `buildTarget`/`mkResolver` call
+          # with `pkgs = nixpkgs.legacyPackages.${system}.pkgsCross.mingwW64`
+          # (or another Windows cross pkgs) passed in explicitly -- these
+          # targets need a real cross-compiled Windows binary, not a
+          # repackaged Linux one, so they can't share a single buildTarget
+          # call with deb/dnfFedora/etc. the way those share with each
+          # other. See targets/windows-exe.nix's header comment.
+          windowsExe = import ./targets/windows-exe.nix {
+            inherit pkgs;
+            mkTarget = self.lib.mkTarget;
+            collectDeps = self.lib.collectDeps;
+          };
+          windowsMsi = import ./targets/windows-msi.nix {
+            inherit pkgs;
+            mkTarget = self.lib.mkTarget;
+            collectDeps = self.lib.collectDeps;
+          };
         }
       );
     };

@@ -40,9 +40,18 @@ let
 
   allNames = lib.concatMapStringsSep " " lib.escapeShellArg (builtins.attrNames targets);
 in
-pkgs.writeShellApplication {
+# buildPackages, not plain pkgs: this script has to actually run on the
+# build machine via `nix run`. For native (non-cross) `pkgs` these are
+# the same thing, but for a cross `pkgs` (e.g. a Windows target's
+# pkgsCross.mingwW64) plain `pkgs.writeShellApplication`/`pkgs.jq` would
+# try to build the wrapper itself, and select jq, *for the target
+# platform* -- verified empirically that this fails outright (Nix refuses
+# to evaluate a derivation tagged with an unbuildable "system"), since
+# automatic build/host splicing only applies to buildInputs/
+# nativeBuildInputs lists, not values used directly like this.
+pkgs.buildPackages.writeShellApplication {
   name = "nixothea-resolve";
-  runtimeInputs = [ pkgs.jq ];
+  runtimeInputs = [ pkgs.buildPackages.jq ];
   text = ''
     declare -A resolvers
     ${dispatch}
