@@ -4,11 +4,21 @@
 # fetches sources and installs dependencies via pacman) -- nixothea never
 # builds the real software for this target, only generates the recipe.
 #
+# A package definition may set `aurSource`/`aurSourceSha256` (plain string
+# attrs alongside pname/version/meta/buildPhase/installPhase on the
+# pkgs.mkDerivation call) to get a real source=()/sha256sums=() pair in the
+# generated PKGBUILD, fetched for real by makepkg on the Arch machine --
+# see mkDerivation below. Without them, `build()` still runs against an
+# empty $srcdir, same as before this existed: only meaningful for
+# definitions that need no external source (as all the other targets'
+# tests in this repo do).
+#
 # Known limitations, kept out of scope for this pass:
-#   - no source= / sha256sums= generation -- package definitions targeting
-#     this should describe their build entirely through buildPhase/
-#     installPhase (as all the other targets' tests in this repo do; no
-#     dependence on Nix's own source fetchers);
+#   - only a single source entry -- no multiple sources, no local
+#     patch-style companion files shipped alongside the PKGBUILD;
+#   - the sha256 has to come from the caller -- nixothea has no impure
+#     phase for the root package's own source the way `resolve` is for
+#     declared dependencies, so it can't fetch-and-hash this itself;
 #   - no makedepends= -- nativeBuildInputs stays real Nix build tooling
 #     (see wrap-mk-derivation.nix), which isn't meaningful to write into a
 #     PKGBUILD meant to run on a real Arch machine;
@@ -88,6 +98,20 @@ mkTarget {
         meta = args.meta or { };
         licenses = licenseNames (meta.license or null);
 
+        # Plain strings on the pkgs.mkDerivation call, alongside
+        # pname/version/meta/buildPhase/installPhase -- per-package, like
+        # those, not per-target-instance like `maintainer`/`arch` above
+        # (the same target instance builds many different packages, each
+        # with its own source). A literal PKGBUILD-syntax string: Nix
+        # interpolation (e.g. "...v${args.version}.tar.gz") happens here,
+        # at eval time, same as every other target's templating -- not
+        # left to makepkg's own $pkgver shell expansion.
+        aurSource = args.aurSource or null;
+        aurSourceSha256 = args.aurSourceSha256 or null;
+      in
+      assert lib.assertMsg ((aurSource == null) == (aurSourceSha256 == null))
+        "nixothea aur target: ${args.pname} must set both aurSource and aurSourceSha256, or neither";
+      let
         pkgbuild = pkgs.writeText "PKGBUILD" ''
           ${lib.optionalString (maintainer != null) "# Maintainer: ${maintainer}"}
           pkgname=${args.pname}
@@ -98,6 +122,8 @@ mkTarget {
           ${lib.optionalString (meta ? homepage) "url=${lib.escapeShellArg meta.homepage}"}
           ${lib.optionalString (licenses != [ ]) "license=(${lib.concatMapStringsSep " " lib.escapeShellArg licenses})"}
           ${lib.optionalString (allDependencies != [ ]) "depends=(${lib.concatMapStringsSep " " depLine allDependencies})"}
+          ${lib.optionalString (aurSource != null) "source=(${lib.escapeShellArg aurSource})"}
+          ${lib.optionalString (aurSource != null) "sha256sums=(${lib.escapeShellArg aurSourceSha256})"}
 
           build() {
             cd "$srcdir"
