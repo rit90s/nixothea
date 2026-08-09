@@ -43,6 +43,21 @@
             mkTarget = self.lib.mkTarget;
             collectDeps = self.lib.collectDeps;
           };
+          dnfFedora = import ./targets/dnf-fedora.nix {
+            inherit pkgs;
+            mkTarget = self.lib.mkTarget;
+            collectDeps = self.lib.collectDeps;
+          };
+          dnfRhel = import ./targets/dnf-rhel.nix {
+            inherit pkgs;
+            mkTarget = self.lib.mkTarget;
+            collectDeps = self.lib.collectDeps;
+          };
+          dnfOpensuse = import ./targets/dnf-opensuse.nix {
+            inherit pkgs;
+            mkTarget = self.lib.mkTarget;
+            collectDeps = self.lib.collectDeps;
+          };
         }
       );
     };
