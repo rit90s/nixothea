@@ -14,7 +14,7 @@
 # "install this named library" at manifest-build time. Every dependency
 # not already covered by the chosen `runtime` has to be its own source-
 # building module, right there in the same manifest, with its own real
-# URL and hash. So this target -- like appimage.nix, for the same
+# URL and hash. So this target -- like appimage's, for the same
 # underlying reason -- has no declared-dependency system at all
 # (`resolve` always emits an empty section, `nativeDerivationFactory` is
 # never called): nixothea's *existing* nested-node mechanism already does
@@ -86,80 +86,8 @@ in
 }:
 mkTarget {
   inherit lib;
-
-  # No live registry to resolve against -- see the header comment for why
-  # this target has no declared-dependency system at all.
-  resolve = { pkgs, deps }:
-    pkgs.writeShellApplication {
-      name = "resolve-flatpak";
-      text = "echo '{}'";
-    };
-
-  # Never actually called: resolve above always emits an empty section, so
-  # there are never any dependencies to turn into pkgs.<name> values.
-  # Exists to satisfy the target interface.
-  nativeDerivationFactory = { pkgs, name, entry }:
-    throw "nixothea flatpak target: does not support dependencies (got ${name})";
-
-  mkDerivation = { pkgs, role, name ? null, realDrv, nodeDeps, dependencyDeps, args }:
-    if role == "dependency" then
-      # Already a real input of whatever consumed it, same reasoning as
-      # every other target's "dependency" role -- the root build below
-      # walks the full node tree regardless, so there's nothing extra to
-      # do here.
-      realDrv
-    else if role == "root" then
-      let
-        collected = collectDeps { inherit lib; nodes = nodeDeps; };
-
-        # "One combined build", same idea as every other target's nested-
-        # node merge, just mapped onto Flatpak's own native concept of it:
-        # every transitively-reachable node's own args become their own
-        # module, nested nodes first, root last.
-        moduleArgs = map (n: n.args) collected.nodes ++ [ args ];
-
-        # A module's own source is optional-but-paired, same convention
-        # as aur.nix's aurSource/aurSourceSha256 (not mandatory like
-        # homebrew.nix's -- a Flatpak module's `sources` array can
-        # legitimately be empty; nothing in the Flatpak manifest schema
-        # itself requires a fetchable source the way Homebrew's Formula
-        # class does).
-        mkModule = a:
-          let
-            src = a.flatpakSource or null;
-            sha = a.flatpakSourceSha256 or null;
-          in
-          assert lib.assertMsg ((src == null) == (sha == null))
-            "nixothea flatpak target: ${a.pname} must set both flatpakSource and flatpakSourceSha256, or neither";
-          {
-            name = a.pname;
-            buildsystem = "simple";
-            build-commands = [
-              (a.buildPhase or "")
-              ("out=/app\n" + (a.installPhase or ""))
-            ];
-            sources = lib.optional (src != null) {
-              type = "archive";
-              url = src;
-              sha256 = sha;
-            };
-          };
-
-        manifest = {
-          app-id = appId;
-          inherit runtime sdk;
-          runtime-version = runtimeVersion;
-          command = mainProgram;
-          finish-args = finishArgs;
-          modules = map mkModule moduleArgs;
-        };
-
-        manifestFile = pkgs.writeText "${appId}.json" (builtins.toJSON manifest);
-      in
-      pkgs.runCommand "${args.pname}-flatpak" { } ''
-        mkdir -p $out
-        cp ${manifestFile} $out/${appId}.json
-      ''
-    else
-      throw "nixothea flatpak target: unknown role ${role}";
+  resolve = import ./resolver.nix { inherit lib; };
+  inherit (import ./builder.nix {
+    inherit lib collectDeps appId runtime runtimeVersion sdk finishArgs mainProgram;
+  }) nativeDerivationFactory mkDerivation;
 }
