@@ -48,6 +48,11 @@
             mkTarget = self.lib.mkTarget;
             collectDeps = self.lib.collectDeps;
           };
+          snap = import ./targets/snap.nix {
+            inherit pkgs;
+            mkTarget = self.lib.mkTarget;
+            collectDeps = self.lib.collectDeps;
+          };
           deb = import ./targets/deb.nix {
             inherit pkgs;
             mkTarget = self.lib.mkTarget;
