@@ -43,6 +43,11 @@
             mkTarget = self.lib.mkTarget;
             collectDeps = self.lib.collectDeps;
           };
+          flatpak = import ./targets/flatpak.nix {
+            inherit pkgs;
+            mkTarget = self.lib.mkTarget;
+            collectDeps = self.lib.collectDeps;
+          };
           deb = import ./targets/deb.nix {
             inherit pkgs;
             mkTarget = self.lib.mkTarget;
