@@ -20,6 +20,7 @@
   dnfFedora = import ./dnf-fedora { inherit pkgs mkTarget collectDeps; };
   dnfRhel = import ./dnf-rhel { inherit pkgs mkTarget collectDeps; };
   dnfOpensuse = import ./dnf-opensuse { inherit pkgs mkTarget collectDeps; };
+  apk = import ./apk { inherit pkgs mkTarget collectDeps; };
   # windowsExe/windowsMsi are constructed with the same native `pkgs` as
   # every other target above (their own construction-time `pkgs` is only
   # ever used for the platform-agnostic `.lib`), but actually *using* them
