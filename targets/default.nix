@@ -10,6 +10,7 @@
 {
   nix = import ./nix.nix { inherit pkgs mkTarget; };
   appimage = import ./appimage { inherit pkgs mkTarget; };
+  tarball = import ./tarball { inherit pkgs mkTarget; };
   docker = import ./docker { inherit pkgs mkTarget collectDeps; };
   aur = import ./aur { inherit pkgs mkTarget collectDeps; };
   homebrew = import ./homebrew { inherit pkgs mkTarget collectDeps; };
