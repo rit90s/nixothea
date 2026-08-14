@@ -26,6 +26,11 @@
         # above, just duplication several of nixothea's own
         # pre-implemented targets happened to share.
         utils.targetImpl = import ./utils/targetImpl;
+
+        # Optional helpers for someone *consuming* nixothea -- debugging
+        # their own app against one target's real dependencies, not
+        # implementing a new target (that's utils.targetImpl above).
+        utils.debug = import ./utils/debug;
       };
 
       # Pre-implemented targets for popular formats, ready to instantiate,
