@@ -72,7 +72,27 @@
 #     `role = "dependency"` first. For the *whole* transitively-reachable
 #     tree (every dependency nested at any depth, deduplicated), see
 #     `collectDeps` in collect-deps.nix.
-{ lib, pkgs, resolve, nativeDerivationFactory, mkDerivation }:
+#
+#   lintRules : { <ruleName> = { pkgs, lockSection, tree, options }: <derivation>; ... } (optional, default { })
+#     Target-specific checks for `nixothea.lib.utils.debug.lintDependencies`
+#     (see utils/debug/lint-dependencies.nix) -- entirely optional, on top
+#     of that function's own three built-in checks. `pkgs`/`lockSection`
+#     are this target's own (same as `resolve`'s `pkgs` would NOT be --
+#     these are the target's real `pkgs` above, and this target's own
+#     slice of the lock file); `tree` is the actual constructed root node
+#     for this target (what `definition { pkgs }` produced, see
+#     wrap-mk-derivation.nix -- `.nodeDeps`/`.dependencyDeps` are already
+#     on it, and `nixothea.lib.utils.debug.referencedDependencyNames`
+#     walks it for you); `options` is whatever the caller configured for
+#     this rule specifically (see lintDependencies' own `options.<targetName>.<ruleName>`).
+#     Must return a `nix run`-able derivation, same shape as `resolve` --
+#     rules are genuinely executed at runtime by the aggregator script, so
+#     a rule is free to do real, impure work (hit the network, shell out
+#     to a real tool, ...), not just pure Nix-eval-time checks. A rule
+#     with nothing impure to do can build its result with
+#     `nixothea.lib.utils.debug.mkFindingsReport` instead of writing its
+#     own script by hand.
+{ lib, pkgs, resolve, nativeDerivationFactory, mkDerivation, lintRules ? { } }:
 assert lib.assertMsg (pkgs != null)
   "nixothea: target.pkgs must be set -- the pkgs this target itself builds against";
 assert lib.assertMsg (builtins.isFunction resolve)
@@ -81,4 +101,6 @@ assert lib.assertMsg (builtins.isFunction nativeDerivationFactory)
   "nixothea: target.nativeDerivationFactory must be a function of { pkgs, name, entry }";
 assert lib.assertMsg (builtins.isFunction mkDerivation)
   "nixothea: target.mkDerivation must be a function of { pkgs, role, name, realDrv, nodeDeps, dependencyDeps, args }";
-{ inherit pkgs resolve nativeDerivationFactory mkDerivation; }
+assert lib.assertMsg (lib.all builtins.isFunction (builtins.attrValues lintRules))
+  "nixothea: every target.lintRules entry must be a function of { pkgs, lockSection, tree, options }";
+{ inherit pkgs resolve nativeDerivationFactory mkDerivation lintRules; }
