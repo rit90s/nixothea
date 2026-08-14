@@ -9,7 +9,7 @@
 # else is already a real input of that something's real build, hence
 # already part of the Nix closure `dockerTools.buildLayeredImage` walks on
 # its own -- there's nothing extra to bundle here.
-{ lib, collectDeps, imageName, tag, mainProgram, entrypoint, cmd, env, workdir, exposedPorts, labels, user, extraContents, maxLayers, created }:
+{ lib, collectDeps, imageName, tag, mainProgram, entrypoint, cmd, env, workdir, exposedPorts, labels, user, extraContents, maxLayers, created, targetImpl }:
 {
   nativeDerivationFactory = { pkgs, name, entry }:
     throw "nixothea docker target: does not support dependencies (got ${name})";
@@ -29,18 +29,11 @@
         # need appimage.nix's manual closureInfo walk.
         allPayloads = [ realDrv ] ++ map (n: n.realDrv) collected.nodes;
 
-        resolvedMainProgram =
-          if mainProgram != null then
-            mainProgram
-          else if !(builtins.pathExists "${realDrv}/bin") then
-            throw "nixothea docker target: ${realDrv.pname} has no bin/ directory -- set mainProgram or entrypoint explicitly"
-          else
-            let bins = builtins.attrNames (builtins.readDir "${realDrv}/bin");
-            in
-            if builtins.length bins == 1 then
-              builtins.head bins
-            else
-              throw "nixothea docker target: ${realDrv.pname} ships ${toString (builtins.length bins)} binaries under bin/ -- set mainProgram or entrypoint explicitly";
+        resolvedMainProgram = targetImpl.autoDetectMainProgram {
+          inherit lib mainProgram realDrv;
+          targetName = "docker";
+          extraHelp = " or entrypoint";
+        };
 
         resolvedEntrypoint =
           if entrypoint != null then entrypoint

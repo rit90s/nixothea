@@ -1,7 +1,7 @@
 # nativeDerivationFactory: never actually called -- resolver.nix always
 # emits an empty section, so there are never any dependencies to turn into
 # pkgs.<name> values. Exists to satisfy the target interface.
-{ lib, runtime, icon, categories, compression, mainProgram, updateInformation }:
+{ lib, runtime, icon, categories, compression, mainProgram, updateInformation, targetImpl }:
 {
   nativeDerivationFactory = { pkgs, name, entry }:
     throw "nixothea appimage target: does not support dependencies (got ${name})";
@@ -19,18 +19,10 @@
       let
         closureInfo = pkgs.closureInfo { rootPaths = [ realDrv ]; };
 
-        resolvedMainProgram =
-          if mainProgram != null then
-            mainProgram
-          else if !(builtins.pathExists "${realDrv}/bin") then
-            throw "nixothea appimage target: ${realDrv.pname} has no bin/ directory -- set mainProgram explicitly"
-          else
-            let bins = builtins.attrNames (builtins.readDir "${realDrv}/bin");
-            in
-            if builtins.length bins == 1 then
-              builtins.head bins
-            else
-              throw "nixothea appimage target: ${realDrv.pname} ships ${toString (builtins.length bins)} binaries under bin/ -- set mainProgram explicitly";
+        resolvedMainProgram = targetImpl.autoDetectMainProgram {
+          inherit lib mainProgram realDrv;
+          targetName = "appimage";
+        };
 
         iconExt = lib.last (lib.splitString "." (baseNameOf (toString icon)));
 

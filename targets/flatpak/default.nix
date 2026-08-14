@@ -44,7 +44,7 @@
 #   - `buildsystem` is always "simple" (raw build-commands) -- no
 #     autotools/cmake/meson preset support, same reasoning as aur/
 #     homebrew's raw shell splicing.
-{ pkgs, mkTarget, collectDeps }:
+{ pkgs, mkTarget, collectDeps, targetImpl }:
 let
   lib = pkgs.lib;
 in
@@ -86,7 +86,7 @@ in
 }:
 mkTarget {
   inherit pkgs lib;
-  resolve = import ./resolver.nix { inherit lib; };
+  resolve = targetImpl.resolvers.empty "flatpak";
   inherit (import ./builder.nix {
     inherit lib collectDeps appId runtime runtimeVersion sdk finishArgs mainProgram;
   }) nativeDerivationFactory mkDerivation;

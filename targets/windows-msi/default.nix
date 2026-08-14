@@ -11,7 +11,7 @@
 # are a transparent pass-through to `pkgs.<name>`, and why DLL bundling
 # needs no extra work (nixpkgs' own mingw setup hook already symlinks
 # every actually-needed DLL into a binary's own $out/bin/, transitively).
-{ pkgs, mkTarget, collectDeps }:
+{ pkgs, mkTarget, collectDeps, targetImpl }:
 let
   # The real pkgs this target builds against -- see windows-exe's header
   # comment.
@@ -62,8 +62,8 @@ in
 mkTarget {
   pkgs = windowsPkgs;
   inherit lib;
-  resolve = import ./resolver.nix { inherit lib; };
+  resolve = targetImpl.resolvers.passthrough "windows-msi";
   inherit (import ./builder.nix {
-    inherit lib collectDeps upgradeCode publisher mainProgram license extraWxsXml;
+    inherit lib collectDeps upgradeCode publisher mainProgram license extraWxsXml targetImpl;
   }) nativeDerivationFactory mkDerivation;
 }

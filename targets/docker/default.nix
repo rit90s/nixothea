@@ -11,7 +11,7 @@
 # closure of whatever's listed in `contents` on its own
 # (`includeStorePaths`, on by default), so listing every transitively-
 # reachable node's own real build output is enough.
-{ pkgs, mkTarget, collectDeps }:
+{ pkgs, mkTarget, collectDeps, targetImpl }:
 let
   lib = pkgs.lib;
 in
@@ -78,8 +78,8 @@ in
 }:
 mkTarget {
   inherit pkgs lib;
-  resolve = import ./resolver.nix { inherit lib; };
+  resolve = targetImpl.resolvers.empty "docker";
   inherit (import ./builder.nix {
-    inherit lib collectDeps imageName tag mainProgram entrypoint cmd env workdir exposedPorts labels user extraContents maxLayers created;
+    inherit lib collectDeps imageName tag mainProgram entrypoint cmd env workdir exposedPorts labels user extraContents maxLayers created targetImpl;
   }) nativeDerivationFactory mkDerivation;
 }

@@ -4,7 +4,7 @@
 # "dependency" is already a real input of whatever consumed it (buildInputs
 # unwrapping already linked realDrv in for real) -- nothing further to do
 # until the root folds its payload in.
-{ lib, collectDeps, architecture, maintainer, pkgrel }:
+{ lib, collectDeps, architecture, maintainer, pkgrel, targetImpl }:
 let
   # Alpine's real, standard musl dynamic-linker install path per
   # architecture -- what the final .apk's own binaries get patched to
@@ -61,7 +61,7 @@ in
         allPayloads = [ realDrv ] ++ map (n: n.realDrv) collected.nodes;
       in
       import ./apk-package.pkg.nix {
-        inherit pkgs lib realDrv allPayloads runtimeApkPackages maintainer pkgrel architecture targetInterpreter;
+        inherit pkgs lib realDrv allPayloads runtimeApkPackages maintainer pkgrel architecture targetInterpreter targetImpl;
         description = args.meta.description or "";
         license = args.meta.license or null;
       }

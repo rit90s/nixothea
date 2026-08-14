@@ -3,7 +3,7 @@
 # involved), so this target doesn't participate in dependency resolution --
 # `resolve` always emits an empty section, and the root build bundles
 # whatever runtime closure it actually needs directly.
-{ pkgs, mkTarget }:
+{ pkgs, mkTarget, targetImpl }:
 let
   lib = pkgs.lib;
   runtime = import ./runtime.pkg.nix { inherit pkgs; };
@@ -35,8 +35,8 @@ in
 }:
 mkTarget {
   inherit pkgs lib;
-  resolve = import ./resolver.nix { inherit lib; };
+  resolve = targetImpl.resolvers.empty "appimage";
   inherit (import ./builder.nix {
-    inherit lib runtime icon categories compression mainProgram updateInformation;
+    inherit lib runtime icon categories compression mainProgram updateInformation targetImpl;
   }) nativeDerivationFactory mkDerivation;
 }

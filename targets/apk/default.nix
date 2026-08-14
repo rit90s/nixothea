@@ -16,7 +16,7 @@
 # same pattern applied to a Windows cross pkgs instead). builder.nix's own
 # `isMusl` assert stays in place as a defensive backstop, even though
 # construction now guarantees it can't actually fail.
-{ pkgs, mkTarget, collectDeps }:
+{ pkgs, mkTarget, collectDeps, targetImpl }:
 let
   # The real pkgs this target builds against.
   alpinePkgs = pkgs.pkgsMusl;
@@ -47,6 +47,6 @@ mkTarget {
   pkgs = alpinePkgs;
   inherit lib;
   resolve = import ./resolver.nix { inherit lib architecture repos keyring; };
-  inherit (import ./builder.nix { inherit lib collectDeps architecture maintainer pkgrel; })
+  inherit (import ./builder.nix { inherit lib collectDeps architecture maintainer pkgrel targetImpl; })
     nativeDerivationFactory mkDerivation;
 }

@@ -20,6 +20,12 @@
         mkResolver = import ./lib/resolver.nix;
         buildTarget = import ./lib/build.nix;
         collectDeps = import ./lib/collect-deps.nix;
+
+        # Optional helpers for implementing a target (see
+        # doc/implementing-a-target.md) -- not part of the core contract
+        # above, just duplication several of nixothea's own
+        # pre-implemented targets happened to share.
+        utils.targetImpl = import ./utils/targetImpl;
       };
 
       # Pre-implemented targets for popular formats, ready to instantiate,
@@ -33,6 +39,7 @@
           inherit pkgs;
           mkTarget = self.lib.mkTarget;
           collectDeps = self.lib.collectDeps;
+          targetImpl = self.lib.utils.targetImpl;
         }
       );
     };

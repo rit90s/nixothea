@@ -23,7 +23,7 @@
 # 2-level dependency chain correctly propagated its DLL down to the final
 # binary's own bin/, no extra effort needed here). So the whole payload is
 # just `$out/bin/*` with symlinks dereferenced.
-{ pkgs, mkTarget, collectDeps }:
+{ pkgs, mkTarget, collectDeps, targetImpl }:
 let
   # The real pkgs this target builds against -- everything platform-
   # dependent (nsis, hostPlatform, ...) flows from this, not from
@@ -65,8 +65,8 @@ in
 mkTarget {
   pkgs = windowsPkgs;
   inherit lib;
-  resolve = import ./resolver.nix { inherit lib; };
+  resolve = targetImpl.resolvers.passthrough "windows-exe";
   inherit (import ./builder.nix {
-    inherit lib collectDeps publisher mainProgram license extraNsisScript;
+    inherit lib collectDeps publisher mainProgram license extraNsisScript targetImpl;
   }) nativeDerivationFactory mkDerivation;
 }

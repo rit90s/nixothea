@@ -5,7 +5,7 @@
 # msi-package.pkg.nix), same nested-node merge as every other target.
 # "dependency" is already a real input of whatever consumed it, same
 # reasoning as windows-exe.
-{ lib, collectDeps, upgradeCode, publisher, mainProgram, license, extraWxsXml }:
+{ lib, collectDeps, upgradeCode, publisher, mainProgram, license, extraWxsXml, targetImpl }:
 let
   # Only verified for x86_64 (full real build+install+run under Wine);
   # i686 by evaluation only. Checks hostPlatform.kernel, not just cpu --
@@ -39,20 +39,11 @@ in
         collected = collectDeps { inherit lib; nodes = nodeDeps; };
         allPayloads = [ realDrv ] ++ map (n: n.realDrv) collected.nodes;
 
-        resolvedMainProgram =
-          if mainProgram != null then
-            mainProgram
-          else if !(builtins.pathExists "${realDrv}/bin") then
-            throw "nixothea windowsMsi target: ${realDrv.pname} has no bin/ directory -- set mainProgram explicitly"
-          else
-            let
-              exes = builtins.filter (lib.hasSuffix ".exe")
-                (builtins.attrNames (builtins.readDir "${realDrv}/bin"));
-            in
-            if builtins.length exes == 1 then
-              lib.removeSuffix ".exe" (builtins.head exes)
-            else
-              throw "nixothea windowsMsi target: ${realDrv.pname} ships ${toString (builtins.length exes)} .exe file(s) under bin/ -- set mainProgram explicitly";
+        resolvedMainProgram = targetImpl.autoDetectMainProgram {
+          inherit lib mainProgram realDrv;
+          targetName = "windowsMsi";
+          matchSuffix = ".exe";
+        };
 
         # Deduped final filenames, matching what actually lands in the
         # flat payload/ dir after every payload's bin/ is merged in (see

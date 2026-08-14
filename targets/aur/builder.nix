@@ -11,14 +11,7 @@
 # something to hand back if anything ever calls this node with
 # role = "dependency" directly, rather than folding it in structurally the
 # way role = "root" does via collectDeps.
-{ lib, collectDeps, maintainer, pkgrel, arch }:
-let
-  licenseName = l: if builtins.isString l then l else (l.spdxId or l.shortName or null);
-  licenseNames = l:
-    if l == null then [ ]
-    else if builtins.isList l then lib.filter (x: x != null) (map licenseName l)
-    else lib.filter (x: x != null) [ (licenseName l) ];
-in
+{ lib, collectDeps, maintainer, pkgrel, arch, targetImpl }:
 {
   nativeDerivationFactory = { pkgs, name, entry }:
     {
@@ -52,7 +45,7 @@ in
           lib.escapeShellArg (d.pkgName + (if d.versionConstraint or null == null then "" else d.versionConstraint));
 
         meta = args.meta or { };
-        licenses = licenseNames (meta.license or null);
+        licenses = targetImpl.licenseNames { inherit lib; license = meta.license or null; };
 
         # Plain strings on the pkgs.mkDerivation call, alongside
         # pname/version/meta/buildPhase/installPhase -- per-package, like

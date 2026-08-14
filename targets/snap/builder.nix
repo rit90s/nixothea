@@ -4,14 +4,8 @@
 # and wraps it with the generated manifest -- the real-build equivalent of
 # every other target's nested-node merge. "dependency" is already a real
 # input of whatever consumed it.
-{ lib, collectDeps, architecture, base, confinement, grade }:
+{ lib, collectDeps, architecture, base, confinement, grade, targetImpl }:
 let
-  licenseName = l: if builtins.isString l then l else (l.spdxId or l.shortName or null);
-  licenseNames = l:
-    if l == null then [ ]
-    else if builtins.isList l then lib.filter (x: x != null) (map licenseName l)
-    else lib.filter (x: x != null) [ (licenseName l) ];
-
   # Snap Store names: lowercase letters/digits/hyphens, must start with a
   # letter. Best-effort, not a full validator -- see default.nix's header
   # comment.
@@ -78,21 +72,13 @@ in
         # which no longer applies once realDrv is always built for real
         # regardless.
         mainProgram = args.mainProgram or null;
-        resolvedMainProgram =
-          if mainProgram != null then
-            mainProgram
-          else if !(builtins.pathExists "${realDrv}/bin") then
-            throw "nixothea snap target: ${realDrv.pname} has no bin/ directory -- set mainProgram explicitly"
-          else
-            let bins = builtins.attrNames (builtins.readDir "${realDrv}/bin");
-            in
-            if builtins.length bins == 1 then
-              builtins.head bins
-            else
-              throw "nixothea snap target: ${realDrv.pname} ships ${toString (builtins.length bins)} binaries under bin/ -- set mainProgram explicitly";
+        resolvedMainProgram = targetImpl.autoDetectMainProgram {
+          inherit lib mainProgram realDrv;
+          targetName = "snap";
+        };
 
         meta = args.meta or { };
-        licenses = licenseNames (meta.license or null);
+        licenses = targetImpl.licenseNames { inherit lib; license = meta.license or null; };
         licenseLine = if licenses == [ ] then null else lib.concatStringsSep " AND " licenses;
 
         snapPlugs = args.snapPlugs or [ ];

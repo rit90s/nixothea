@@ -6,21 +6,21 @@
 # sizeable pinned fetched artifact -- see e.g. targets/deb/) -- `import`
 # resolves a directory to its own default.nix transparently either way, so
 # this file doesn't need to know or care which shape a given target uses.
-{ pkgs, mkTarget, collectDeps }:
+{ pkgs, mkTarget, collectDeps, targetImpl }:
 {
-  nix = import ./nix.nix { inherit pkgs mkTarget; };
-  appimage = import ./appimage { inherit pkgs mkTarget; };
-  tarball = import ./tarball { inherit pkgs mkTarget; };
-  docker = import ./docker { inherit pkgs mkTarget collectDeps; };
-  aur = import ./aur { inherit pkgs mkTarget collectDeps; };
-  homebrew = import ./homebrew { inherit pkgs mkTarget collectDeps; };
-  flatpak = import ./flatpak { inherit pkgs mkTarget collectDeps; };
-  snap = import ./snap { inherit pkgs mkTarget collectDeps; };
+  nix = import ./nix.nix { inherit pkgs mkTarget targetImpl; };
+  appimage = import ./appimage { inherit pkgs mkTarget targetImpl; };
+  tarball = import ./tarball { inherit pkgs mkTarget targetImpl; };
+  docker = import ./docker { inherit pkgs mkTarget collectDeps targetImpl; };
+  aur = import ./aur { inherit pkgs mkTarget collectDeps targetImpl; };
+  homebrew = import ./homebrew { inherit pkgs mkTarget collectDeps targetImpl; };
+  flatpak = import ./flatpak { inherit pkgs mkTarget collectDeps targetImpl; };
+  snap = import ./snap { inherit pkgs mkTarget collectDeps targetImpl; };
   deb = import ./deb { inherit pkgs mkTarget collectDeps; };
   dnfFedora = import ./dnf-fedora { inherit pkgs mkTarget collectDeps; };
   dnfRhel = import ./dnf-rhel { inherit pkgs mkTarget collectDeps; };
   dnfOpensuse = import ./dnf-opensuse { inherit pkgs mkTarget collectDeps; };
-  apk = import ./apk { inherit pkgs mkTarget collectDeps; };
+  apk = import ./apk { inherit pkgs mkTarget collectDeps targetImpl; };
   # windowsExe/windowsMsi are constructed with the same native `pkgs` as
   # every other target above, same as apk -- each derives whatever pkgs
   # it actually needs (a Windows cross pkgs, a musl pkgs) from this native
@@ -28,6 +28,6 @@
   # and lib/mk-target.nix for why), so unlike before, these can be mixed
   # freely with Linux-native targets in the very same buildTarget/
   # mkResolver call -- no separate call with different pkgs needed.
-  windowsExe = import ./windows-exe { inherit pkgs mkTarget collectDeps; };
-  windowsMsi = import ./windows-msi { inherit pkgs mkTarget collectDeps; };
+  windowsExe = import ./windows-exe { inherit pkgs mkTarget collectDeps targetImpl; };
+  windowsMsi = import ./windows-msi { inherit pkgs mkTarget collectDeps targetImpl; };
 }

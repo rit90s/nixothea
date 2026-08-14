@@ -10,14 +10,11 @@
 # untrusted`), same reasoning as deb.nix/rpm-package.pkg.nix producing
 # unsigned artifacts: real package signing needs a real private key,
 # which doesn't belong baked into a reproducible Nix build.
-{ pkgs, lib, realDrv, allPayloads, runtimeApkPackages, maintainer, pkgrel, architecture, targetInterpreter, description, license }:
+{ pkgs, lib, realDrv, allPayloads, runtimeApkPackages, maintainer, pkgrel, architecture, targetInterpreter, description, license, targetImpl }:
 let
-  licenseName = l: if builtins.isString l then l else (l.spdxId or l.shortName or null);
-  licenseNames = l:
-    if l == null then [ ]
-    else if builtins.isList l then lib.filter (x: x != null) (map licenseName l)
-    else lib.filter (x: x != null) [ (licenseName l) ];
-  licenseLine = let ls = licenseNames license; in if ls == [ ] then "unknown" else lib.concatStringsSep " AND " ls;
+  licenseLine =
+    let ls = targetImpl.licenseNames { inherit lib license; };
+    in if ls == [ ] then "unknown" else lib.concatStringsSep " AND " ls;
 
   pkgver = "${realDrv.version}-r${toString pkgrel}";
   apkName = "${realDrv.pname}-${pkgver}.apk";

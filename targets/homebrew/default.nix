@@ -34,7 +34,7 @@
 #     literal two characters "#{" (Ruby interpolation syntax) would be
 #     misinterpreted; not sanitized against here, same class of trust-the-
 #     caller-supplied-text tradeoff as every other target's templating.
-{ pkgs, mkTarget, collectDeps }:
+{ pkgs, mkTarget, collectDeps, targetImpl }:
 let
   lib = pkgs.lib;
 in
@@ -46,7 +46,7 @@ in
 }:
 mkTarget {
   inherit pkgs lib;
-  resolve = import ./resolver.nix { inherit lib; };
-  inherit (import ./builder.nix { inherit lib collectDeps revision; })
+  resolve = targetImpl.resolvers.passthrough "homebrew";
+  inherit (import ./builder.nix { inherit lib collectDeps revision targetImpl; })
     nativeDerivationFactory mkDerivation;
 }

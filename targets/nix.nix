@@ -3,7 +3,7 @@
 # pkgs.mkDerivation would have produced natively, with no repackaging of
 # any kind. Useful as a baseline/control, and for definitions that don't
 # need anything target-specific from the "nix" leg of a multi-target build.
-{ pkgs, mkTarget }:
+{ pkgs, mkTarget, targetImpl }:
 let
   lib = pkgs.lib;
 in
@@ -15,11 +15,7 @@ mkTarget {
   # are already fully pinned by the nixpkgs revision in use -- so this
   # just echoes the declared dependency spec back as the lock section,
   # unchanged.
-  resolve = { pkgs, deps }:
-    pkgs.writeShellApplication {
-      name = "resolve-nix";
-      text = "echo ${lib.escapeShellArg (builtins.toJSON deps)}";
-    };
+  resolve = targetImpl.resolvers.passthrough "nix";
 
   # entry.name is a real nixpkgs attribute name (top-level only; no
   # dotted-path lookup for nested attrsets like python3Packages.foo).

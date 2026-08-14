@@ -6,14 +6,8 @@
 # mkDerivation: "root" builds one combined Formula, same nested-node merge
 # as every other target. "dependency" is never actually realized -- same
 # reasoning as aur.
-{ lib, collectDeps, revision }:
+{ lib, collectDeps, revision, targetImpl }:
 let
-  licenseName = l: if builtins.isString l then l else (l.spdxId or l.shortName or null);
-  licenseNames = l:
-    if l == null then [ ]
-    else if builtins.isList l then lib.filter (x: x != null) (map licenseName l)
-    else lib.filter (x: x != null) [ (licenseName l) ];
-
   # Ruby class names must start with an uppercase letter -- "my-tool" (or
   # "my_tool"/"my.tool") becomes "MyTool". A pname starting with a digit
   # gets an arbitrary "X" prefix instead (real Homebrew's own leading-digit
@@ -60,7 +54,7 @@ in
         steps = phase: map (n: n.args.${phase} or "") collected.nodes ++ [ (args.${phase} or "") ];
 
         meta = args.meta or { };
-        licenses = licenseNames (meta.license or null);
+        licenses = targetImpl.licenseNames { inherit lib; license = meta.license or null; };
 
         homebrewSource = args.homebrewSource or
           (throw "nixothea homebrew target: ${args.pname} must set homebrewSource -- a real, fetchable URL for its upstream source (Homebrew's Formula class requires one, unlike aur.nix's PKGBUILD, which can run build()/package() against nothing)");

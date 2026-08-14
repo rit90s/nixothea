@@ -7,7 +7,7 @@
 # "dependency" is already a real input of whatever consumed it -- nixpkgs'
 # mingw setup hook already symlinked whatever DLLs it needs into its own
 # bin/, which the root build folds in like everything else.
-{ lib, collectDeps, publisher, mainProgram, license, extraNsisScript }:
+{ lib, collectDeps, publisher, mainProgram, license, extraNsisScript, targetImpl }:
 let
   # Only verified for these two -- mingw32 by evaluation only (i686 was
   # never actually built/run-tested this session), mingwW64 by a full
@@ -50,20 +50,11 @@ in
         # payload directory, not a separate installer per node.
         allPayloads = [ realDrv ] ++ map (n: n.realDrv) collected.nodes;
 
-        resolvedMainProgram =
-          if mainProgram != null then
-            mainProgram
-          else if !(builtins.pathExists "${realDrv}/bin") then
-            throw "nixothea windowsExe target: ${realDrv.pname} has no bin/ directory -- set mainProgram explicitly"
-          else
-            let
-              exes = builtins.filter (lib.hasSuffix ".exe")
-                (builtins.attrNames (builtins.readDir "${realDrv}/bin"));
-            in
-            if builtins.length exes == 1 then
-              lib.removeSuffix ".exe" (builtins.head exes)
-            else
-              throw "nixothea windowsExe target: ${realDrv.pname} ships ${toString (builtins.length exes)} .exe file(s) under bin/ -- set mainProgram explicitly";
+        resolvedMainProgram = targetImpl.autoDetectMainProgram {
+          inherit lib mainProgram realDrv;
+          targetName = "windowsExe";
+          matchSuffix = ".exe";
+        };
       in
       import ./exe-package.pkg.nix {
         inherit pkgs lib realDrv arch publisher license extraNsisScript allPayloads resolvedMainProgram;

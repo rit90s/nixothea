@@ -23,7 +23,7 @@
 #     (see wrap-mk-derivation.nix), which isn't meaningful to write into a
 #     PKGBUILD meant to run on a real Arch machine;
 #   - pkgname/pkgver aren't validated against PKGBUILD's charset rules.
-{ pkgs, mkTarget, collectDeps }:
+{ pkgs, mkTarget, collectDeps, targetImpl }:
 let
   lib = pkgs.lib;
 in
@@ -39,7 +39,7 @@ in
 }:
 mkTarget {
   inherit pkgs lib;
-  resolve = import ./resolver.nix { inherit lib; };
-  inherit (import ./builder.nix { inherit lib collectDeps maintainer pkgrel arch; })
+  resolve = targetImpl.resolvers.passthrough "aur";
+  inherit (import ./builder.nix { inherit lib collectDeps maintainer pkgrel arch targetImpl; })
     nativeDerivationFactory mkDerivation;
 }

@@ -1,7 +1,7 @@
 # nativeDerivationFactory: never actually called -- resolver.nix always
 # emits an empty section, so there are never any dependencies to turn into
 # pkgs.<name> values. Exists to satisfy the target interface.
-{ lib, compression, mainProgram }:
+{ lib, compression, mainProgram, targetImpl }:
 {
   nativeDerivationFactory = { pkgs, name, entry }:
     throw "nixothea tarball target: does not support dependencies (got ${name})";
@@ -17,18 +17,10 @@
       let
         closureInfo = pkgs.closureInfo { rootPaths = [ realDrv ]; };
 
-        resolvedMainProgram =
-          if mainProgram != null then
-            mainProgram
-          else if !(builtins.pathExists "${realDrv}/bin") then
-            throw "nixothea tarball target: ${realDrv.pname} has no bin/ directory -- set mainProgram explicitly"
-          else
-            let bins = builtins.attrNames (builtins.readDir "${realDrv}/bin");
-            in
-            if builtins.length bins == 1 then
-              builtins.head bins
-            else
-              throw "nixothea tarball target: ${realDrv.pname} ships ${toString (builtins.length bins)} binaries under bin/ -- set mainProgram explicitly";
+        resolvedMainProgram = targetImpl.autoDetectMainProgram {
+          inherit lib mainProgram realDrv;
+          targetName = "tarball";
+        };
       in
       assert lib.assertMsg (resolvedMainProgram != "nix")
         "nixothea tarball target: mainProgram can't be \"nix\" -- collides with the bundled closure's own nix/ directory at the top level of the extracted tarball";

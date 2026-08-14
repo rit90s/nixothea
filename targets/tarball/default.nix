@@ -14,7 +14,7 @@
 # dispatch) -- just without appimage.nix's squashfs-plus-runtime-stub
 # packaging, or any desktop integration (no `.desktop` file/icon, since
 # there's no launcher menu to integrate with).
-{ pkgs, mkTarget }:
+{ pkgs, mkTarget, targetImpl }:
 let
   lib = pkgs.lib;
 in
@@ -36,8 +36,8 @@ in
 }:
 mkTarget {
   inherit pkgs lib;
-  resolve = import ./resolver.nix { inherit lib; };
+  resolve = targetImpl.resolvers.empty "tarball";
   inherit (import ./builder.nix {
-    inherit lib compression mainProgram;
+    inherit lib compression mainProgram targetImpl;
   }) nativeDerivationFactory mkDerivation;
 }
