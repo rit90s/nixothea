@@ -45,7 +45,7 @@ in
   revision ? null,
 }:
 mkTarget {
-  inherit lib;
+  inherit pkgs lib;
   resolve = import ./resolver.nix { inherit lib; };
   inherit (import ./builder.nix { inherit lib collectDeps revision; })
     nativeDerivationFactory mkDerivation;

@@ -5,6 +5,19 @@
 # multiple times under different names (e.g. a `deb` target configured once
 # as `debian` and once as `ubuntu`, each with its own repos).
 #
+# `pkgs` is the pkgs *this target itself* builds against -- fixed once,
+# here, at construction time, rather than supplied later by whoever calls
+# `mkResolver`/`buildTarget`. This is what lets one `buildTarget`/
+# `mkResolver` call freely mix targets that fundamentally need different
+# pkgs -- e.g. a Linux-native `deb` target alongside `windowsExe` (which
+# needs a real Windows cross pkgs like `pkgsCross.mingwW64`) or `apk`
+# (which needs a musl pkgs) -- without the caller having to run separate
+# calls per platform, or risk a target silently building against the
+# wrong pkgs. A target that needs something other than the plain pkgs
+# it's handed derives that itself from it (see
+# targets/windows-exe/default.nix, targets/apk/default.nix) rather than
+# expecting the caller to know to supply it.
+#
 #   resolve : { pkgs, deps }: <derivation>
 #     `deps` is this target's slice of the dependency spec: an attrset
 #     { <logicalName> = <this target's entry for it>; } containing only the
@@ -16,7 +29,12 @@
 #     print this target's lock-file section as JSON to stdout. The
 #     section's schema is entirely up to the target, as long as every entry
 #     carries at least the logical name, real name, and concrete resolved
-#     version.
+#     version. `pkgs` here is *not* necessarily this target's own `pkgs`
+#     above -- mkResolver always builds `resolve` with safe, reliably-
+#     native build-machine tooling regardless (see lib/resolver.nix),
+#     since resolving is a network/CLI-tool operation, never something
+#     that needs to be built *for* whatever platform the target itself
+#     targets.
 #
 #   nativeDerivationFactory : { pkgs, name, entry }: <value>
 #     Called once per dependency found in this target's lock-file section
@@ -54,11 +72,13 @@
 #     `role = "dependency"` first. For the *whole* transitively-reachable
 #     tree (every dependency nested at any depth, deduplicated), see
 #     `collectDeps` in collect-deps.nix.
-{ lib, resolve, nativeDerivationFactory, mkDerivation }:
+{ lib, pkgs, resolve, nativeDerivationFactory, mkDerivation }:
+assert lib.assertMsg (pkgs != null)
+  "nixothea: target.pkgs must be set -- the pkgs this target itself builds against";
 assert lib.assertMsg (builtins.isFunction resolve)
   "nixothea: target.resolve must be a function of { pkgs, deps }";
 assert lib.assertMsg (builtins.isFunction nativeDerivationFactory)
   "nixothea: target.nativeDerivationFactory must be a function of { pkgs, name, entry }";
 assert lib.assertMsg (builtins.isFunction mkDerivation)
   "nixothea: target.mkDerivation must be a function of { pkgs, role, name, realDrv, nodeDeps, dependencyDeps, args }";
-{ inherit resolve nativeDerivationFactory mkDerivation; }
+{ inherit pkgs resolve nativeDerivationFactory mkDerivation; }

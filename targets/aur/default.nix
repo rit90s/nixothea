@@ -38,7 +38,7 @@ in
   arch ? [ "x86_64" ],
 }:
 mkTarget {
-  inherit lib;
+  inherit pkgs lib;
   resolve = import ./resolver.nix { inherit lib; };
   inherit (import ./builder.nix { inherit lib collectDeps maintainer pkgrel arch; })
     nativeDerivationFactory mkDerivation;

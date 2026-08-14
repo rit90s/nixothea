@@ -8,9 +8,13 @@
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
     in {
-      # All of these take `pkgs`/`lib` explicitly from the caller rather
-      # than binding nixothea's own nixpkgs input, so consumers evaluate
-      # against their own nixpkgs pin.
+      # None of these bind nixothea's own nixpkgs input, so consumers
+      # evaluate against their own nixpkgs pin: `mkTarget` takes `pkgs`/
+      # `lib` explicitly from the caller (fixing the pkgs that one target
+      # itself builds against -- see lib/mk-target.nix); `buildTarget`/
+      # `mkResolver` need no `pkgs` of their own at all, since every
+      # target in the `targets` attrset they're given already carries its
+      # own.
       lib = {
         mkTarget = import ./lib/mk-target.nix;
         mkResolver = import ./lib/resolver.nix;

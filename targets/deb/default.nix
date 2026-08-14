@@ -32,7 +32,7 @@ let
     repos);
 in
 mkTarget {
-  inherit lib;
+  inherit pkgs lib;
   resolve = import ./resolver.nix { inherit lib architecture sourcesList keyring; };
   inherit (import ./builder.nix { inherit lib collectDeps architecture maintainer section priority; })
     nativeDerivationFactory mkDerivation;

@@ -1,13 +1,15 @@
 # A constructor: `nixothea.targets.windowsExe { }` returns a target that
 # builds a real NSIS-based Windows installer (.exe). Unlike every other
 # target, this one needs an actual cross-compiled Windows binary, not a
-# repackaged Linux one -- so `pkgs` passed to this constructor (and to the
-# `buildTarget` call it's used in) must itself be a Windows cross pkgs,
-# e.g. `nixpkgs.legacyPackages.${system}.pkgsCross.mingwW64`. That means
-# this target can't share a single `buildTarget` call with Linux-native
-# targets (deb, rpm, ...) the way those can share with each other -- the
-# same `definition` function has to actually compile differently for
-# Windows, which needs its own `buildTarget` invocation with cross `pkgs`.
+# repackaged Linux one -- so this target derives its own Windows cross
+# pkgs (`pkgsCross.mingwW64`) from whatever native pkgs it's constructed
+# with, itself, below, rather than requiring the caller to figure out and
+# pass cross pkgs into `buildTarget`/`mkResolver` (see lib/mk-target.nix
+# for why every target supplies its own pkgs this way). That's what lets
+# this target sit in the very same `targets` attrset -- and the same
+# `buildTarget`/`mkResolver` call -- as Linux-native targets (`deb`,
+# `dnfFedora`, ...): each just builds against its own pkgs, regardless of
+# what any other target in the same call needs.
 #
 # Dependencies work like the `nix` target's (see nix.nix): there's no
 # Windows equivalent of apt/dnf to resolve arbitrary C library build
@@ -23,14 +25,11 @@
 # just `$out/bin/*` with symlinks dereferenced.
 { pkgs, mkTarget, collectDeps }:
 let
-  # Only `.lib` is used from this construction-time `pkgs` -- genuinely
-  # platform-agnostic, so it doesn't matter whether flake.nix constructed
-  # this target with native or cross pkgs. Everything that actually
-  # depends on the target platform (nsis, hostPlatform, ...) instead
-  # reads it from mkDerivation's own `pkgs` parameter (the *caller's*
-  # buildTarget-time `pkgs` -- the one that actually has to be cross pkgs
-  # for any of this to produce real Windows binaries), see builder.nix.
-  lib = pkgs.lib;
+  # The real pkgs this target builds against -- everything platform-
+  # dependent (nsis, hostPlatform, ...) flows from this, not from
+  # whatever native `pkgs` this constructor happened to receive.
+  windowsPkgs = pkgs.pkgsCross.mingwW64;
+  lib = windowsPkgs.lib;
 in
 {
   publisher ? null,
@@ -64,6 +63,7 @@ in
   extraNsisScript ? "",
 }:
 mkTarget {
+  pkgs = windowsPkgs;
   inherit lib;
   resolve = import ./resolver.nix { inherit lib; };
   inherit (import ./builder.nix {

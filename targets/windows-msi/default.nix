@@ -5,18 +5,18 @@
 # natively on Linux, no Wine needed to *build* the .msi (only to test
 # running it, which this target's development used `wine`'s own
 # `msiexec`/`wine` for). Same cross-compilation requirement as
-# windows-exe -- see that target's header comment for why `pkgs` here
-# must be a Windows cross pkgs, why dependencies are a transparent
-# pass-through to `pkgs.<name>`, and why DLL bundling needs no extra work
-# (nixpkgs' own mingw setup hook already symlinks every actually-needed
-# DLL into a binary's own $out/bin/, transitively).
+# windows-exe -- see that target's header comment for why this target
+# derives its own Windows cross pkgs itself (rather than requiring the
+# caller to pass one into `buildTarget`/`mkResolver`), why dependencies
+# are a transparent pass-through to `pkgs.<name>`, and why DLL bundling
+# needs no extra work (nixpkgs' own mingw setup hook already symlinks
+# every actually-needed DLL into a binary's own $out/bin/, transitively).
 { pkgs, mkTarget, collectDeps }:
 let
-  # Only `.lib` is used from this construction-time `pkgs` -- see
-  # windows-exe's header comment for why platform-dependent things
-  # instead read mkDerivation's own `pkgs` parameter (the caller's
-  # buildTarget-time one).
-  lib = pkgs.lib;
+  # The real pkgs this target builds against -- see windows-exe's header
+  # comment.
+  windowsPkgs = pkgs.pkgsCross.mingwW64;
+  lib = windowsPkgs.lib;
 in
 {
   # Mandatory, no default -- same reasoning as `repos`/`releasever` on the
@@ -60,6 +60,7 @@ in
   extraWxsXml ? "",
 }:
 mkTarget {
+  pkgs = windowsPkgs;
   inherit lib;
   resolve = import ./resolver.nix { inherit lib; };
   inherit (import ./builder.nix {

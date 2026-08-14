@@ -34,7 +34,7 @@ in
   updateInformation ? null,
 }:
 mkTarget {
-  inherit lib;
+  inherit pkgs lib;
   resolve = import ./resolver.nix { inherit lib; };
   inherit (import ./builder.nix {
     inherit lib runtime icon categories compression mainProgram updateInformation;

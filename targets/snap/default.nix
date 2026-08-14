@@ -86,7 +86,7 @@ let
   keyring = import ./keyring.pkg.nix { inherit pkgs; };
 in
 mkTarget {
-  inherit lib;
+  inherit pkgs lib;
   resolve = import ./resolver.nix { inherit lib architecture sourcesList keyring; };
   inherit (import ./builder.nix { inherit lib collectDeps architecture base confinement grade; })
     nativeDerivationFactory mkDerivation;

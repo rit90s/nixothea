@@ -9,7 +9,7 @@ let
 in
 { }:
 mkTarget {
-  inherit lib;
+  inherit pkgs lib;
 
   # Nothing to resolve against a live registry -- nixpkgs attribute names
   # are already fully pinned by the nixpkgs revision in use -- so this

@@ -45,7 +45,7 @@ let
     repos);
 in
 mkTarget {
-  inherit lib;
+  inherit pkgs lib;
   resolve = import ./resolver.nix { inherit lib releasever architecture reposFile keyring; };
   inherit (import ./builder.nix { inherit lib collectDeps architecture vendor license group; })
     nativeDerivationFactory mkDerivation;

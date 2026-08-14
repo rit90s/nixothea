@@ -22,15 +22,12 @@
   dnfOpensuse = import ./dnf-opensuse { inherit pkgs mkTarget collectDeps; };
   apk = import ./apk { inherit pkgs mkTarget collectDeps; };
   # windowsExe/windowsMsi are constructed with the same native `pkgs` as
-  # every other target above (their own construction-time `pkgs` is only
-  # ever used for the platform-agnostic `.lib`), but actually *using* them
-  # needs a `buildTarget`/`mkResolver` call with
-  # `pkgs = nixpkgs.legacyPackages.${system}.pkgsCross.mingwW64` (or
-  # another Windows cross pkgs) passed in explicitly -- these targets need
-  # a real cross-compiled Windows binary, not a repackaged Linux one, so
-  # they can't share a single buildTarget call with deb/dnfFedora/etc. the
-  # way those share with each other. See targets/windows-exe/default.nix's
-  # header comment.
+  # every other target above, same as apk -- each derives whatever pkgs
+  # it actually needs (a Windows cross pkgs, a musl pkgs) from this native
+  # one itself (see targets/windows-exe/default.nix, targets/apk/default.nix,
+  # and lib/mk-target.nix for why), so unlike before, these can be mixed
+  # freely with Linux-native targets in the very same buildTarget/
+  # mkResolver call -- no separate call with different pkgs needed.
   windowsExe = import ./windows-exe { inherit pkgs mkTarget collectDeps; };
   windowsMsi = import ./windows-msi { inherit pkgs mkTarget collectDeps; };
 }

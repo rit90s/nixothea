@@ -8,14 +8,19 @@
 # musl-based, not glibc-based, so unlike deb/dnf's glibc-to-glibc
 # interpreter retarget (a like-for-like swap between two glibc builds),
 # this target needs a genuinely musl-linked `realDrv` to retarget in the
-# first place -- `buildTarget`/`mkResolver` must be called with
-# `pkgs = nixpkgs.legacyPackages.${system}.pkgsMusl` (or another musl
-# pkgs), the same "needs a specific kind of pkgs" requirement
-# windowsExe/windowsMsi have for `pkgsCross.mingwW64`. builder.nix asserts
-# this explicitly rather than failing obscurely partway through a build.
+# first place -- so this target derives its own musl pkgs (`pkgsMusl`)
+# from whatever native pkgs it's constructed with, itself, below, rather
+# than requiring the caller to figure out and pass a musl pkgs into
+# `buildTarget`/`mkResolver` (see lib/mk-target.nix for why every target
+# supplies its own pkgs this way, and windows-exe/default.nix for the
+# same pattern applied to a Windows cross pkgs instead). builder.nix's own
+# `isMusl` assert stays in place as a defensive backstop, even though
+# construction now guarantees it can't actually fail.
 { pkgs, mkTarget, collectDeps }:
 let
-  lib = pkgs.lib;
+  # The real pkgs this target builds against.
+  alpinePkgs = pkgs.pkgsMusl;
+  lib = alpinePkgs.lib;
 in
 {
   # Where to resolve/fetch packages from -- mandatory, no default, since
@@ -36,9 +41,10 @@ in
   pkgrel ? 0,
 }:
 let
-  keyring = import ./keyring.pkg.nix { inherit pkgs; };
+  keyring = import ./keyring.pkg.nix { pkgs = alpinePkgs; };
 in
 mkTarget {
+  pkgs = alpinePkgs;
   inherit lib;
   resolve = import ./resolver.nix { inherit lib architecture repos keyring; };
   inherit (import ./builder.nix { inherit lib collectDeps architecture maintainer pkgrel; })

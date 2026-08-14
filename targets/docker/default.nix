@@ -77,7 +77,7 @@ in
   created ? null,
 }:
 mkTarget {
-  inherit lib;
+  inherit pkgs lib;
   resolve = import ./resolver.nix { inherit lib; };
   inherit (import ./builder.nix {
     inherit lib collectDeps imageName tag mainProgram entrypoint cmd env workdir exposedPorts labels user extraContents maxLayers created;
