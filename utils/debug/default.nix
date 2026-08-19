@@ -30,4 +30,11 @@
   # internally by lintDependencies' own built-in checks; also usable
   # directly from a target's own `lintRules`.
   mkFindingsReport = import ./mk-findings-report.nix;
+
+  # { targets, lockFile, definition }: <nix run-able derivation>
+  # Renders one target's real dependency tree -- `--target <name>`
+  # (mandatory) picks which, default output is an indented text tree,
+  # `--html <path>` writes a self-contained, interactive graph instead.
+  # See the file itself for the full parameter reference.
+  printTree = import ./print-tree.nix;
 }
