@@ -31,6 +31,11 @@
         # their own app against one target's real dependencies, not
         # implementing a new target (that's utils.targetImpl above).
         utils.debug = import ./utils/debug;
+
+        # Collapses the common "same real name (and optionally version)
+        # on every target" pattern out of a `dependencies` block. See the
+        # file itself for the full parameter reference.
+        utils.sameEntry = import ./utils/same-entry.nix;
       };
 
       # Pre-implemented targets for popular formats, ready to instantiate,
