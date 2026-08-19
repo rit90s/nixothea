@@ -40,8 +40,15 @@ let
       fi
     done
 
-    %files
-    /usr
+    # Lists only real files/symlinks, never directories -- see
+    # dnf-fedora/rpm-package.pkg.nix's own comment for why: claiming a
+    # directory in %files makes rpm compare its mode against every other
+    # package that also owns it, and a real base `filesystem` package
+    # routinely hardens some of them differently than a plain `mkdir -p`
+    # here produces, causing a real "file ... conflicts" install failure.
+    find %{buildroot}/usr -mindepth 1 \( -type f -o -type l \) -printf '/usr/%%P\n' > %{_builddir}/files.list
+
+    %files -f %{_builddir}/files.list
   '');
 in
 pkgs.stdenv.mkDerivation {

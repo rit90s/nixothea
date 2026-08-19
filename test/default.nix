@@ -7,14 +7,16 @@ let
   lib = pkgs.lib;
   unit = import ./unit { inherit pkgs; };
   e2e = import ./e2e { inherit pkgs nixothea system; };
+  targetTests = import ./e2e/targets { inherit pkgs nixothea system; };
 in
 {
   checks =
     (lib.mapAttrs' (name: drv: lib.nameValuePair "unit-${name}" drv) unit.checks)
-    // (lib.mapAttrs' (name: drv: lib.nameValuePair "e2e-${name}" drv) e2e.checks);
+    // (lib.mapAttrs' (name: drv: lib.nameValuePair "e2e-${name}" drv) e2e.checks)
+    // targetTests.checks;
 
   apps = {
     test-unit = { type = "app"; program = "${unit.report}/bin/nixothea-test-unit"; };
     test-e2e = { type = "app"; program = "${e2e.report}/bin/nixothea-test-e2e"; };
-  };
+  } // targetTests.apps;
 }

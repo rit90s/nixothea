@@ -50,8 +50,19 @@ let
       fi
     done
 
-    %files
-    /usr
+    # Lists only real files/symlinks, never directories: claiming `/usr`
+    # (or any of its subdirectories) as owned in %files makes rpm compare
+    # that directory's mode against every other package that also owns
+    # it, and a real base `filesystem` package routinely hardens some of
+    # them (e.g. Fedora 44's own /usr/bin is `dr-xr-xr-x`, not the 0755 a
+    # plain `mkdir -p` here produces) -- verified this exact scenario
+    # fails a real install with "file /usr/bin ... conflicts with file
+    # from package filesystem" otherwise. Parent directories are still
+    # created on install; they're just never separately owned by this
+    # package, which is also standard RPM packaging practice.
+    find %{buildroot}/usr -mindepth 1 \( -type f -o -type l \) -printf '/usr/%%P\n' > %{_builddir}/files.list
+
+    %files -f %{_builddir}/files.list
   '');
 in
 pkgs.stdenv.mkDerivation {
