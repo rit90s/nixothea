@@ -52,5 +52,19 @@
           targetImpl = self.lib.utils.targetImpl;
         }
       );
+
+      # Unit (test/unit/) and e2e (test/e2e/) tests for `lib`/`utils`
+      # above -- `nixothea = self`, so the suite exercises the flake's own
+      # real outputs, the same way any consumer would. See
+      # test/README.md for how to run these.
+      checks = forAllSystems (system:
+        let pkgs = nixpkgs.legacyPackages.${system};
+        in (import ./test { inherit pkgs system; nixothea = self; }).checks
+      );
+
+      apps = forAllSystems (system:
+        let pkgs = nixpkgs.legacyPackages.${system};
+        in (import ./test { inherit pkgs system; nixothea = self; }).apps
+      );
     };
 }
